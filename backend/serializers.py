@@ -6,14 +6,11 @@ from backend.models import User, Category, Shop, ProductInfo, Product, ProductPa
 
 
 class ContactSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Contact
-        fields = ('id', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'user', 'phone')
-        read_only_fields = ('id',)
-        extra_kwargs = {
-            'user': {'write_only': True}
-        }
+        fields = ['id', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'phone_number']
+        read_only_fields = ('id', 'user') 
+
 
 
 
@@ -28,8 +25,21 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'first_name', 'last_name', 'email', 'company', 'position', 'contacts')
-        read_only_fields = ('id',)
+        fields = ('id', 'first_name', 'last_name', 'email', 'contacts')
+        read_only_fields = ('id', )
+
+
+class RegisterAccountSerializer(serializers.ModelSerializer):
+   # company = serializers.CharField(max_length=100)
+
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'password', 'first_name', 'last_name']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        user = User.objects.create_user(**validated_data)
+        return user
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -57,6 +67,15 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 
+class ProductParameterSerializer(serializers.ModelSerializer):
+    parameter = serializers.StringRelatedField()
+
+    class Meta:
+        model = ProductParameter
+        fields = ('parameter', 'value')
+
+
+
 class ProductInfoSerializer(serializers.ModelSerializer):
 
     product = ProductSerializer(read_only=True)
@@ -66,15 +85,6 @@ class ProductInfoSerializer(serializers.ModelSerializer):
         model = ProductInfo
         fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameters')
         read_only_fields = ('id',)
-
-
-
-class ProductParameterSerializer(serializers.ModelSerializer):
-    parameter = serializers.StringRelatedField()
-
-    class Meta:
-        model = ProductParameter
-        fields = ('parameter', 'value')
 
 
 
@@ -90,7 +100,7 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    ProductInfo = ProductInfoSerializer(read_only=True)
+    product_info = ProductInfoSerializer(read_only=True)
 
 
 class OrderSerializer(serializers.ModelSerializer):

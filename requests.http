@@ -1,0 +1,108 @@
+###    requests.http
+
+
+### Определение переменной baseUrl
+@baseUrl = http://localhost:8000/api/v1
+
+
+
+
+### 1. Регистрация нового пользователя
+
+POST {{baseUrl}}/user/register
+Content-Type: application/json
+
+{
+    "email": "newuser2@example.com",
+    "password": "SecPassword2",
+    "first_name": "John2",
+    "last_name": "Doe2"
+}
+
+
+###  2. Подтверждение аккаунта через токен на почту
+
+POST {{baseUrl}}/user/register/confirm
+Content-Type: application/json
+
+{
+    "email": "newuser2@example.com",
+    "token": "222"
+}
+
+
+###  3. Получение информации о пользователе
+GET  {{baseUrl}}/user/21/details
+Authorization: 111
+
+
+
+### 4. Получение списка всех пользователей:
+GET {{baseUrl}}/users
+
+
+
+### 5. Добавление Обновление Удаление контактной информации пользователя
+###POST
+POST {{baseUrl}}/user/contact/21
+Content-Type: application/json
+Authorization: Bearer 111
+
+{
+    "city": "New York",
+    "street": "123",
+    "house": "123",
+    "structure": "123",
+    "building": "123",
+    "apartment": "123",
+    "phone_number": "1234567890"
+}
+
+
+
+
+###GET
+GET {{baseUrl}}/user/contact/20
+Authorization: Bearer 111
+
+
+###PUT
+PUT {{baseUrl}}/user/contact/7
+Content-Type: application/json
+Authorization: Bearer 111
+
+{
+"id": "7",
+"city": "New York",
+"street": "456",
+"house": "456",
+"structure": "456",
+"building": "456",
+"apartment": "456",
+"phone_number": "0987654321"
+}
+
+
+
+###deleteFull
+DELETE {{baseUrl}}/user/contact/123?full_delete=True HTTP/1.1
+Authorization: Bearer 111
+
+
+
+###ParticularDelete
+
+DELETE {{baseUrl}}/user/contact/123 HTTP/1.1
+Authorization: Bearer 111
+Content-Type: application/json
+
+{
+"id": "7",
+"city": "New York",
+"street": "456",
+"house": "456",
+"structure": "456",
+"building": "456",
+"apartment": "456",
+"phone_number": "0987654321"
+}

@@ -1,0 +1,144 @@
+1. Регистрация пользователя
+
+
+Copy code
+POST {{baseUrl}}/user/register
+Content-Type: application/json
+
+{
+    "email": "newuser2@example.com",
+    "password": "securepassword2",
+    "first_name": "John2",
+    "last_name": "Doe2"
+}
+
+2. Подтверждение регистрации пользователя
+
+POST {{baseUrl}}/user/register/confirm
+Content-Type: application/json
+
+{
+    "email": "newuser2@example.com",
+    "token": "your_confirmation_token"
+}
+
+3.Получение деталей пользователя
+
+GET {{baseUrl}}/user/details
+Authorization: Bearer your_access_token
+
+4.Обновление контактной информации пользователя
+
+POST {{baseUrl}}/user/contact
+Content-Type: application/json
+
+{
+    "city": "New York",
+    "address": "123 Street",
+    "phone": "1234567890"
+}
+
+5.Авторизация пользователя
+
+POST {{baseUrl}}/user/login
+Content-Type: application/json
+
+{
+    "email": "user@example.com",
+    "password": "userpassword"
+}
+
+6. Запрос на сброс пароля
+
+POST {{baseUrl}}/user/password_reset
+Content-Type: application/json
+
+{
+    "email": "user@example.com"
+}
+
+7. Подтверждение сброса пароля
+
+POST {{baseUrl}}/user/password_reset/confirm
+Content-Type: application/json
+
+{
+    "token": "your_reset_token",
+    "new_password": "newpassword"
+}
+
+8.Получение списка категорий
+
+GET {{baseUrl}}/categories
+
+
+9.Получение списка магазинов
+
+GET {{baseUrl}}/shops
+
+
+10.Получение информации о продуктах
+
+GET {{baseUrl}}/products
+Управление корзиной
+
+11.Добавление товара в корзину
+
+POST {{baseUrl}}/basket
+Content-Type: application/json
+
+{
+    "items": [{"product_info_id": 1, "quantity": 2}]
+}
+
+12.Обновление количества товара в корзине
+
+PUT {{baseUrl}}/basket
+Content-Type: application/json
+
+{
+    "items": [{"id": 1, "quantity": 3}]
+}
+
+13.Удаление товара из корзины
+
+DELETE {{baseUrl}}/basket
+Content-Type: application/json
+
+{
+    "items": "1"
+}
+
+14.Обновление информации о партнере
+
+POST {{baseUrl}}/partner/update
+Content-Type: application/json
+
+{
+    "url": "http://example.com/price_list.yaml"
+}
+
+15.Управление состоянием партнера
+
+POST {{baseUrl}}/partner/state
+Content-Type: application/json
+
+{
+    "state": "True"
+}
+
+16.Получение заказов партнера
+
+GET {{baseUrl}}/partner/orders
+Authorization: Bearer your_access_token
+
+
+17.Размещение заказа
+
+POST {{baseUrl}}/order
+Content-Type: application/json
+
+{
+    "id": 1,
+    "contact": 1
+}

@@ -1,12 +1,21 @@
 from django.shortcuts import render
 import yaml
-from distutils.util import strtobool
+#from distutils.util import strtobool
+
+from django.views import View
+from django.http import HttpResponse
+from rest_framework.renderers import JSONRenderer
+import secrets
+
 
 from rest_framework.views import APIView
-from rest_framework.response import Request
+from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework import status
 from django.contrib.auth import authenticate
+from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError
@@ -19,12 +28,44 @@ from rest_framework.response import Response
 from rest_framework.views import APIView    
 from ujson import loads as load_json
 from rest_framework import status
-from serializers import PriceListUploadSerializer, UserSerializer, CategorySerializer, ShopSerializer, ProductSerializer, ProductInfoSerializer, ProductParameterSerializer, OrderSerializer,
-from .models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, Contact, User
+import logging
+from .serializers import PriceListUploadSerializer, UserSerializer, CategorySerializer, ShopSerializer, ProductSerializer, ProductInfoSerializer, ProductParameterSerializer, OrderSerializer, RegisterAccountSerializer, OrderItemSerializer, ContactSerializer
+from .models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, Contact, User, ConfirmEmailToken
+
+
+
+
+logger = logging.getLogger(__name__)
+
+
+
+def strtobool(val):
+    """Convert a string representation of truth to true (1) or false (0).
+
+    True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
+    are 'n', 'no', 'f', 'false', 'off', and '0'.  Raises ValueError if
+    'val' is anything else.
+    """
+    val = val.lower()
+    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+        return 1
+    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+        return 0
+    else:
+        raise ValueError("invalid truth value %r" % (val,))
+
+
+
+
+class HomeView(View):
+
+   def get(self, request):
+        return HttpResponse("Hello, this is the home page!")
 
 
 
 class PriceListUploadView(APIView):
+
 
     def post(self, request, *args, **kwargs):
         serializer = PriceListUploadSerializer(data=request.data)
@@ -91,27 +132,31 @@ class RegisterAccount(APIView):
         """
         # проверяем обязательные аргументы
         if {'email', 'password', 'first_name', 'last_name'}.issubset(request.data):
-            # валидируем пароль 
+            # валидируем пароль
             try:
                 validate_password(request.data['password'])
             except Exception as password_error:
-                error_array = []
-                error_array.append(password_error)
-                return JsonResponse({"status": "error", "errors": error_array}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"status": "error", "errors": str(password_error)}, status=status.HTTP_400_BAD_REQUEST)
             else:
-
                 # проверяем данные для уникальности имени пользователя
-                user_serializer = UserSerializer(data=request.data)
+                user_serializer = RegisterAccountSerializer(data=request.data)
                 if user_serializer.is_valid():
                     # сохраняем пользователя
                     user = user_serializer.save()
                     user.set_password(request.data['password'])
                     user.save()
-                    return JsonResponse({"status": "success"}, status=status.HTTP_200_OK)
+                    print(f"Пользователь с именем {user.first_name}, фамилией {user.last_name} и емэйлом {user.email} успешно зарегистрирован в базе.")
+                    # Генерация токена для подтверждения email
+                    # token = secrets.token_urlsafe(32)
+                    # ConfirmEmailToken.objects.create(user=user, token=token)
+                    # Возвращаем сериализованные данные пользователя, включая id
+                    return Response(user_serializer.data, status=status.HTTP_201_CREATED)
                 else:
-                    return JsonResponse({"status": "error", "errors": user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-                
-        return JsonResponse({"status": "error", "errors": "Не указаны все необходимые аргументы"}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"status": "error", "errors": user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"status": "error", "errors": "Не указаны все необходимые аргументы"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
     
 class ConfirmAccount(APIView):
     """
@@ -131,78 +176,65 @@ class ConfirmAccount(APIView):
                 - JsonResponse: The response indicating the status of the operation and any errors.
                 """
         
+        logger.info(f"Received request data: {request.data}")
+
           # Проверяем обязательные аргументы
         if {'email', 'token'}.issubset(request.data):
-
-            token = ConfirmEmailToken.objects.filter(user__email=request.data['email'], token=request.data['token']).first()
-            if token:
-                token.user.is_active = True
-                token.user.save()
+            User = get_user_model()
+            try:
+                user = User.objects.get(email=request.data['email'])
+                token = ConfirmEmailToken.objects.get(user=user, token=request.data['token'])
+                user.is_active = True
+                user.save()
                 token.delete()
-                return JsonResponse({"status": "success"}, status=status.HTTP_200_OK)
-            else:
-                return JsonResponse({"status": "error", "errors": "Неверный токен"}, status=status.HTTP_400_BAD_REQUEST)
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                return Response({"status": "token check is success"}, status=status.HTTP_200_OK)
+            except (User.DoesNotExist, ConfirmEmailToken.DoesNotExist):
+                return Response({"status": "error", "errors": "Неверный токен или email"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, status=status.HTTP_400_BAD_REQUEST)
     
 
 
-    class AccountDetails(APIView):
-        """
-        Класс для получения информации о пользователе
-        """
-        def get(self, request, *args, **kwargs):
-            """
-                Получает информацию о пользователе.
+class AccountDetails(APIView):
 
-                Args:
-                - request (Request): The Django request object.
-                Returns:
-                - JsonResponse: The response containing the user's information.
-                """
-            if not request.user.is_authenticated:
-                return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-            
-            serializer = UserSerializer(request.user)
-            return JsonResponse(serializer.data, status=status.HTTP_200_OK)
-        
-        def post(self, request, *args, **kwargs):
-            
-            """
-                Update the account details of the authenticated user.
-
-                Args:
-                - request (Request): The Django request object.
-
-                Returns:
-                - JsonResponse: The response indicating the status of the operation and any errors.
-                """
-            
-            
-            if not request.user.is_authenticated:
-                return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-            # проверяем обязательные аргументы
-            if not request.user.is_authenticated:
-                return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-            if {'email', 'first_name', 'last_name'}.issubset(request.data):
-                # валидируем пароль 
-                try:
-                    validate_password(request.data['password'])
-                except Exception as password_error:
-                    error_array = []
-                    error_array.append(password_error)
-                    return JsonResponse({"status": "error", "errors": error_array}, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    request.user.set_password(request.data['password'])
+    """
+    Класс для получения информации о пользователе
+    """
 
 
+    def get(self, request, user_id, *args, **kwargs):
+        # Вывод заголовков запроса для отладки
+        print("Headers of the request:", request.headers)
+        token = request.headers.get('Authorization', '').replace('Token ', '')
+        print("Extracted token before replace:", request.headers.get('Authorization'))
+        print("Extracted token:", token)  # Отладочный вывод для проверки извлечения токена
+
+        try:
+            user = User.objects.get(id=user_id)
+            print("Database token:", user.token)  # Отладочный вывод для пр
+            print("Request token:", token)
+            # Проверяем, соответствует ли токен пользователя
+            if user.token == token:
+                serializer = UserSerializer(user)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response({'Status': False, 'Error': 'Invalid token'}, status=status.HTTP_403_FORBIDDEN)
+        except User.DoesNotExist:
+            return Response({'Status': False, 'Error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        if {'email', 'first_name', 'last_name'}.issubset(request.data):
             user_serializer = UserSerializer(request.user, data=request.data, partial=True)
             if user_serializer.is_valid():
                 user_serializer.save()
                 return JsonResponse({"status": "success"}, status=status.HTTP_200_OK)
             else:
                 return JsonResponse({"status": "error", "errors": user_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-            
+        return JsonResponse({"status": "error", "errors": "Не указаны все необходимые аргументы"}, status=status.HTTP_400_BAD_REQUEST)
+    
 
 class LoginAccount(APIView):
     """
@@ -288,22 +320,7 @@ class ProductInfoView(APIView):
 
         serializer = ProductSerializer(queryset, many=True)
         return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
-     
 
-class BasketView(APIView):
-
-    """
-     A class for managing the user's shopping basket.
-
-    Methods:
-    - get: Retrieve the items in the user's basket.
-    - post: Add an item to the user's basket.
-    - put: Update the quantity of an item in the user's basket.
-    - delete: Remove an item from the user's basket.
-
-    Attributes:
-    - None
-    """
 
 
 class BasketView(APIView):
@@ -483,6 +500,95 @@ class PartnerUpdate(APIView):
     # Изменить текущий статус
     def post(self, request, *args, **kwargs):
         """
+                Update the partner price list information.
+
+                Args:
+                - request (Request): The Django request object.
+
+                Returns:
+                - JsonResponse: The response indicating the status of the operation and any errors.
+                """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        if request.user.type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+
+        url = request.data.get('url')
+        if url:
+            validate_url = URLValidator()
+            try:
+                validate_url(url)
+            except ValidationError as e:
+                return JsonResponse({'Status': False, 'Error': str(e)})
+            else:
+                stream = get(url).content
+
+                data = load_yaml(stream, Loader=Loader)
+
+                shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
+                for category in data['categories']:
+                    category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
+                    category_object.shops.add(shop.id)
+                    category_object.save()
+                ProductInfo.objects.filter(shop_id=shop.id).delete()
+                for item in data['goods']:
+                    product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category'])
+
+                    product_info = ProductInfo.objects.create(product_id=product.id,
+                                                              external_id=item['id'],
+                                                              model=item['model'],
+                                                              price=item['price'],
+                                                              price_rrc=item['price_rrc'],
+                                                              quantity=item['quantity'],
+                                                              shop_id=shop.id)
+                    for name, value in item['parameters'].items():
+                        parameter_object, _ = Parameter.objects.get_or_create(name=name)
+                        ProductParameter.objects.create(product_info_id=product_info.id,
+                                                        parameter_id=parameter_object.id,
+                                                        value=value)
+
+                return JsonResponse({'Status': True})
+
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+
+
+class PartnerState(APIView):
+    """
+       A class for managing partner state.
+
+       Methods:
+       - get: Retrieve the state of the partner.
+
+       Attributes:
+       - None
+       """
+    # получить текущий статус
+    def get(self, request, *args, **kwargs):
+        """
+               Retrieve the state of the partner.
+
+               Args:
+               - request (Request): The Django request object.
+
+               Returns:
+               - Response: The response containing the state of the partner.
+               """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        if request.user.type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+
+        shop = request.user.shop
+        serializer = ShopSerializer(shop)
+        return Response(serializer.data)
+
+    # изменить текущий статус
+    def post(self, request, *args, **kwargs):
+        """
                Update the state of a partner.
 
                Args:
@@ -491,13 +597,11 @@ class PartnerUpdate(APIView):
                Returns:
                - JsonResponse: The response indicating the status of the operation and any errors.
                """
-        
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-        
         state = request.data.get('state')
         if state:
             try:
@@ -505,10 +609,10 @@ class PartnerUpdate(APIView):
                 return JsonResponse({'Status': True})
             except ValueError as error:
                 return JsonResponse({'Status': False, 'Errors': str(error)})
-            
-        
+
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
+
+        
 
 class PartnerOrders(APIView):
      
@@ -545,127 +649,107 @@ class PartnerOrders(APIView):
          
          serializer = OrderSerializer(order, many=True)
          return Response(serializer.data)
+
+
+class ContactView(APIView):
+    renderer_classes = [JSONRenderer]
+
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            # Проверяем наличие заголовка Authorization и его содержимое
+            auth_header = request.META.get('HTTP_AUTHORIZATION')
+            if auth_header and auth_header.startswith('Bearer 111'):
+                user_id = kwargs.get('user_id', None)
+                if user_id:
+                    try:
+                        request.user = get_user_model().objects.get(id=user_id)
+                    except get_user_model().DoesNotExist:
+                        return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    return Response({'detail': 'User ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'detail': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return super().dispatch(request, *args, **kwargs)
     
 
-    class ContactView(APIView):
-        """
-       A class for managing contact information.
-
-       Methods:
-       - get: Retrieve the contact information of the authenticated user.
-       - post: Create a new contact for the authenticated user.
-       - put: Update the contact information of the authenticated user.
-       - delete: Delete the contact of the authenticated user.
-
-       Attributes:
-       - None
-       """
+    def get(self, request, user_id, *args, **kwargs):
+        try:
+            contacts = Contact.objects.filter(user_id=user_id)
+            serializer = ContactSerializer(contacts, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        def get(self, request, *args, **kwargs):
-            """
-               Retrieve the contact information of the authenticated user.
+    def post(self, request, user_id, *args, **kwargs):
+        try:
+            user = get_user_model().objects.get(id=user_id)
+        except ObjectDoesNotExist:
+            return Response({'Status': False, 'Errors': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-               Args:
-               - request (Request): The Django request object.
+        # Получаем контакты пользователя, если они уже существуют
+        contact = Contact.objects.filter(user=user).first()
 
-               Returns:
-               - Response: The response containing the contact information.
-               """
-            
+        # Если контакты не найдены, создаем новый экземпляр Contact
+        if not contact:
+            contact = Contact(user=user)
 
-            if not request.user.is_authenticated:
-                return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-            
-            contact = Contact.objects.filter(user_id=request.user.id)
-            serializer = ContactSerializer(contact, many=True)
-            return Response(serializer.data)
-
-
-            # Создать новый контакт
-        def post(self, request, *args, **kwargs):
-               
-            """
-               Create a new contact for the authenticated user.
-                Args:
-                - request (Request): The Django request object.
-                Returns: The Response indicating the status of the operation and any errors.
-                """
-            if not request.user.is_authenticated:
-                            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-            
-            if {'city', 'address', 'phone'}.issubnet(request.data):
-                request.data._mutable = True
-                request.data.update({'user_id': request.user.id})
-                serializer = ContactSerializer(data=request.data)
-
-                if serializer.is_valid():
-                    serializer.save()
-                    return JsonResponse({'Status': True})
-                else:
-                    return JsonResponse({'Status': False, 'Errors': serializer.errors})
-
-            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-        
-
-         # удалить контакт
-        def delete(self, request, *args, **kwargs):
-            
-            """
-               Delete the contact of the authenticated user.
-               Args:
-               - request (Request): The Django request object.
-
-               Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
-               """
-            if not request.user.is_authenticated:
-                return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-            
-            items_sting = request.data.get('items')
-            if items_sting:
-                items_list = items_sting.split(',')
-                query = Q()
-                objects_deleted = False
-                for contact_id in items_list:
-                    if contact_id.isdigit():
-                        query = query | Q(user_id=request.user.id, id=contact_id)
-                        objects_deleted = True
+        data = request.data.copy()
+        serializer = ContactSerializer(contact, data=data, partial=True)  # partial=True позволяет обновлять частичные данные
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'Status': True}, status=status.HTTP_200_OK)
+        return Response({'Status': False, 'Errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
-                if objects_deleted:
-                    deleted_count = Contact.objects.filter(query).delete()[0]
-                    return JsonResponse({'Status': True, 'Обновлено объектов': deleted_count})
-                
-            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-        # редактировать контакт
-        def put(self, request, *args, **kwargs):
+    def put(self, request, user_id, *args, **kwargs):
+        try:
+            # Получаем контакт пользователя по user_id
+            contact = Contact.objects.get(user_id=user_id)
+        except Contact.DoesNotExist:
+            # Если контакт не существует, создаем новый
+            contact = Contact(user_id=user_id)
 
-            if not request.user.is_authenticated:
-                """
-                   Update the contact information of the authenticated user.
+        # Сериализуем данные запроса
+        serializer = ContactSerializer(contact, data=request.data, partial=True)
+        if serializer.is_valid():
+            # Сохраняем обновленные данные
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            # Возвращаем ошибку валидации
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-                   Args:
-                   - request (Request): The Django request object.
 
-                   Returns:
-                   - JsonResponse: The response indicating the status of the operation and any errors.
-                   """
+    def delete(self, request, user_id, *args, **kwargs):
+        contact = Contact.objects.filter(user_id=user_id).first()
+        if contact:
+            contact.delete()
+            return Response({'Status': True}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'Status': False, 'Errors': 'Contact not found'}, status=status.HTTP_404_NOT_FOUND)
 
-                return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-                                    
-            if 'id' in request.data:
-                if request.data['id'].isdigit():
-                    contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.id).first()
-                    print(contact)
-                if contact:
-                    serializer = ContactSerializer(contact, data=request.data, partial=True)
-                    if serializer.is_valid():
-                        serializer.save()
-                        return JsonResponse({'Status': True})
-                    else:
-                        return JsonResponse({'Status': False, 'Errors': serializer.errors})
-                        
+
+    def patch(self, request, user_id, *args, **kwargs):
+        try:
+            contact = Contact.objects.get(user_id=user_id)
+        except Contact.DoesNotExist:
+            return Response({'detail': 'Contact not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        # Удаляем поля, переданные в запросе, устанавливая их значения в None
+        for field in data:
+            if data[field] is None:
+                data[field] = None
+
+        serializer = ContactSerializer(contact, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'Status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response({'Status': False, 'Errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
 
 class OrderView(APIView):
     """
@@ -740,3 +824,12 @@ class OrderView(APIView):
 
 
 
+
+class UserListView(APIView):
+    def get(self, request):
+        try:
+            users = User.objects.all()
+            serializer = UserSerializer(users, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)

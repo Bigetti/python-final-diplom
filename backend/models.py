@@ -1,9 +1,7 @@
-
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.contrib.auth.tokens import get_token_generator
-
+from django.contrib.auth.tokens import default_token_generator
 
 
 
@@ -30,7 +28,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', False)
         return self._create_user(email, password, **extra_fields)
 
-    def create_superuser(self, email, password, **extra_fields):
+    def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
@@ -40,14 +38,30 @@ class UserManager(BaseUserManager):
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
 
+        # При создании суперпользователя используем username
+        if 'username' not in extra_fields:
+            extra_fields['username'] = email
+
         return self._create_user(email, password, **extra_fields)
     
-
     
 class User(AbstractUser):
+    username = models.CharField(max_length=150, blank=True, null=True)
     email = models.EmailField(_('email address'), unique=True)
     address = models.CharField(max_length=255, blank=True)
     phone_number = models.CharField(max_length=15, blank=True)
+    login = models.CharField(max_length=150, blank=True, null=True, unique=True)
+    token = models.CharField(max_length=255, blank=True, null=True)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+
+    def save(self, *args, **kwargs):
+        if not self.pk:  # Проверяем, что объект только создается, а не обновляется
+            self.token = '111'  # Устанавливаем токен
+        super().save(*args, **kwargs)
+
+    objects = UserManager()
 
     def __str__(self) -> str:
         return f'{self.first_name} {self.last_name}'
@@ -64,12 +78,12 @@ class Shop(models.Model):
     prise_list_url = models.URLField(verbose_name= 'Ссылка',null='True', blank=True)
     is_accepting_orders = models.BooleanField(verbose_name= 'принимает заказы', default=True)
     user = models.OneToOneField(User, verbose_name='Пользователь', blank=True, null=True, on_delete=models.CASCADE)
-    order_state = models.BooleanField(verbose_name='статус получения заказов', default=True)
+    state = models.BooleanField(verbose_name='статус получения заказов', default=True)
 
     class Meta:
         verbose_name = 'Магазин'
         verbose_name_plural = "Список магазинов"
-        ordering = ('-name',)
+        ordering = ('-company_name',)
 
     def __str__(self):
         return self.name
@@ -85,7 +99,7 @@ class Category(models.Model):
     class Meta:
         verbose_name = 'Категория'
         verbose_name_plural = "Список категорий"
-        ordering = ('-name',)
+        ordering = ('-category_name',)
 
 
 
@@ -110,8 +124,8 @@ class ProductInfo(models.Model):
     product = models.ForeignKey(Product, verbose_name='Продукт', related_name='product_info', blank=True, on_delete=models.CASCADE)
     shop = models.ForeignKey(Shop, verbose_name='Магазин', related_name='product_info', blank=True, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(verbose_name='Количество')
-    price = models.DecimalField(verbose_name='Цена')
-    price_rrc = models.DecimalField(verbose_name='Рекомендуемая розничная цена')
+    price = models.DecimalField(verbose_name='Цена', max_digits=10, decimal_places=2)
+    price_rrc = models.DecimalField(verbose_name='Рекомендуемая розничная цена', max_digits=10, decimal_places=2)
 
     class Meta():
         verbose_name = 'Информация о продукте'
@@ -130,7 +144,7 @@ class Parameter(models.Model):
     class Meta():
         verbose_name = 'Имя параметра'
         verbose_name_plural = "Список имен параметров"
-        ordering = ('-name',)
+        ordering = ('-parameter_name',)
     
     def __str__():
         return
@@ -170,6 +184,9 @@ class Contact(models.Model):
         return f'{self.city} {self.street} {self.house} {self.structure} {self.building} {self.apartment} {self.phone_number}'
 
 
+    def __str__(self):
+        return f'{self.city} {self.street} {self.house} {self.structure} {self.building} {self.apartment} {self.phone_number}'
+
 
 
 class Order(models.Model):
@@ -183,12 +200,11 @@ class Order(models.Model):
     ]
 
     user = models.ForeignKey(User, verbose_name='Пользователь', related_name='orders', blank=True, on_delete=models.CASCADE)
-    state = models.CharField(verbose_name='Статус', choices=STATUS_CHOISES, max_length=20, default='pending')
+    status = models.CharField(verbose_name='Статус', choices=STATUS_CHOISES, max_length=20, default='pending')
     contact = models.ForeignKey(Contact, verbose_name='Контакт', related_name='orders', blank=True, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOISES, default='pending')
-
+    
     class Meta:
         verbose_name = 'Заказ'
         verbose_name_plural = "Список заказов"
@@ -216,25 +232,20 @@ class OrderItem(models.Model):
         return f'{self.product_info.product.product_name} - {self.quantity} шт. - {self.get_total_price()} руб.'
     
 
- 
 class ConfirmEmailToken(models.Model):
-
     user = models.ForeignKey(User, verbose_name='Пользователь', related_name='confirm_email_tokens', blank=True, on_delete=models.CASCADE)
     token = models.CharField(_("Key"), max_length=64, db_index=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-
-    
     class Meta:
         verbose_name = 'Токен подтверждения почты'
         verbose_name_plural = "Список токенов подтверждения почты"
 
-
-    def generate_token():
+    def generate_token(self):
         """ generates a pseudo random code using os.urandom and binascii.hexlify """
-        return get_token_generator().make_token()
+        return default_token_generator.make_token(self.user)
     
-    def save (self, *args, **kwargs):
+    def save(self, *args, **kwargs):
         if not self.token:
             self.token = self.generate_token()
         return super(ConfirmEmailToken, self).save(*args, **kwargs)

@@ -2,6 +2,22 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+from django.contrib.auth.management.commands.createsuperuser import Command as CreateSuperuserCommand
+
+
+# from django.contrib.auth.management.commands.createsuperuser import Command as CreateSuperuserCommand
+
+# class Command(CreateSuperuserCommand):
+#     help = "Creates a new superuser."
+
+#     def add_arguments(self, parser):
+#         super().add_arguments(parser)
+#         parser.remove_argument('username')
+
+#     def handle(self, *args, **options):
+#         if 'username' in options:
+#             del options['username']
+#         return super().handle(*args, **options)
 
 
 def main():
