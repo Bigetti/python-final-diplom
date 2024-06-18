@@ -1,19 +1,19 @@
 shop: Связной
 categories:
   - id: 224
-    name: Смартфоны
+    category_name: Смартфоны
   - id: 15
-    name: Аксессуары
+    category_name: Аксессуары
   - id: 1
-    name: Flash-накопители
+    category_name: Flash-накопители
   - id: 5
-    name: Телевизоры
+    category_name: Телевизоры
 
 goods:
   - id: 4216292
     category: 224
     model: apple/iphone/xs-max
-    name: Смартфон Apple iPhone XS Max 512GB (золотистый)
+    product_name: Смартфон Apple iPhone XS Max 512GB (золотистый)
     price: 110000
     price_rrc: 116990
     quantity: 14
@@ -25,7 +25,7 @@ goods:
   - id: 4216313
     category: 224
     model: apple/iphone/xr
-    name: Смартфон Apple iPhone XR 256GB (красный)
+    product_name: Смартфон Apple iPhone XR 256GB (красный)
     price: 65000
     price_rrc: 69990
     quantity: 9
@@ -37,7 +37,7 @@ goods:
   - id: 4216226
     category: 224
     model: apple/iphone/xr
-    name: Смартфон Apple iPhone XR 256GB (черный)
+    product_name: Смартфон Apple iPhone XR 256GB (черный)
     price: 65000
     price_rrc: 69990
     quantity: 5
@@ -49,7 +49,7 @@ goods:
   - id: 4672670
     category: 224
     model: apple/iphone/xr
-    name: Смартфон Apple iPhone XR 128GB (синий)
+    product_name: Смартфон Apple iPhone XR 128GB (синий)
     price: 60000
     price_rrc: 64990
     quantity: 7
@@ -61,7 +61,7 @@ goods:
   - id: 1234567
     category: 15
     model: samsung/galaxy-s20
-    name: Smartphone Samsung Galaxy S20 128GB (black)
+    product_name: Smartphone Samsung Galaxy S20 128GB (black)
     price: 80000
     price_rrc: 84990
     quantity: 5
@@ -73,7 +73,7 @@ goods:
   - id: 1234568
     category: 15
     model: samsung/galaxy-note20
-    name: Smartphone Samsung Galaxy Note20 256GB (mystic bronze)
+    product_name: Smartphone Samsung Galaxy Note20 256GB (mystic bronze)
     price: 95000
     price_rrc: 99990
     quantity: 3
@@ -85,7 +85,7 @@ goods:
   - id: 1235464569
     category: 1
     model: sandisk/ultra-flair-64gb
-    name: USB Flash Drive SanDisk Ultra Flair 64GB (silver)
+    product_name: USB Flash Drive SanDisk Ultra Flair 64GB (silver)
     price: 1500
     price_rrc: 1990
     quantity: 10
@@ -95,7 +95,7 @@ goods:
   - id: 1235434570
     category: 1
     model: kingston/datatraveler-32gb
-    name: USB Flash Drive Kingston DataTraveler 32GB (red)
+    product_name: USB Flash Drive Kingston DataTraveler 32GB (red)
     price: 1000
     price_rrc: 1290
     quantity: 8
@@ -105,7 +105,7 @@ goods:
   - id: 123544571
     category: 224
     model: xiaomi/mi-10t-pro
-    name: Smartphone Xiaomi Mi 10T Pro 256GB (cosmic black)
+    product_name: Smartphone Xiaomi Mi 10T Pro 256GB (cosmic black)
     price: 70000
     price_rrc: 74990
     quantity: 6
@@ -117,7 +117,7 @@ goods:
   - id: 1234572
     category: 5
     model: samsung/qled-q90r
-    name: Samsung QLED Q90R 65" 4K UHD Smart TV
+    product_name: Samsung QLED Q90R 65" 4K UHD Smart TV
     price: 2500
     price_rrc: 2999
     quantity: 4
@@ -128,7 +128,7 @@ goods:
   - id: 123476573
     category: 5
     model: lg/oled-cx
-    name: LG OLED CX 55" 4K UHD Smart TV
+    product_name: LG OLED CX 55" 4K UHD Smart TV
     price: 1800
     price_rrc: 1999
     quantity: 7
@@ -139,7 +139,7 @@ goods:
   - id: 1234453574
     category: 5
     model: sony/bravia-x900h
-    name: Sony Bravia X900H 75" 4K UHD Smart TV
+    product_name: Sony Bravia X900H 75" 4K UHD Smart TV
     price: 3000
     price_rrc: 3499
     quantity: 3
@@ -150,7 +150,7 @@ goods:
   - id: 123234575
     category: 5
     model: tcl/6-series
-    name: TCL 6-Series 55" 4K UHD Smart TV
+    product_name: TCL 6-Series 55" 4K UHD Smart TV
     price: 700
     price_rrc: 799
     quantity: 10
@@ -161,7 +161,7 @@ goods:
   - id: 123424576
     category: 5
     model: vizio/p-series-quantum
-    name: Vizio P-Series Quantum 65" 4K UHD Smart TV
+    product_name: Vizio P-Series Quantum 65" 4K UHD Smart TV
     price: 1200
     price_rrc: 1299
     quantity: 5

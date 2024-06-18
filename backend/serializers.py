@@ -1,4 +1,5 @@
 from rest_framework import serializers
+import os
 
 
 from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
@@ -8,15 +9,30 @@ from backend.models import User, Category, Shop, ProductInfo, Product, ProductPa
 class ContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
-        fields = ['id', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'phone_number']
-        read_only_fields = ('id', 'user') 
-
-
+        fields = ['id', 'user', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'phone_number']
+        read_only_fields = ('id',) 
 
 
 class PriceListUploadSerializer(serializers.Serializer):
 
-    file = serializers.FileField()
+    filePath = serializers.CharField(max_length=2000, required=True)
+
+    def validate(self, attrs):
+        filePath = attrs.get('filePath')
+
+        if not filePath:
+            raise serializers.ValidationError("The 'filePath' field is required.")
+
+        # Здесь вы можете добавить проверку пути к файлу, например, чтобы убедиться, что файл существует
+        if not os.path.exists(filePath):
+            raise serializers.ValidationError("The file does not exist.")
+        
+        # Добавляем отладочные принты
+        print("Received file path:", filePath)
+        print("Does file exist?", os.path.exists(filePath))
+
+        return attrs
+
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -30,8 +46,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegisterAccountSerializer(serializers.ModelSerializer):
-   # company = serializers.CharField(max_length=100)
-
+  
     class Meta:
         model = User
         fields = ['id', 'email', 'password', 'first_name', 'last_name']
@@ -46,7 +61,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ('id', 'name',)
+        fields = ('id', 'category_name',)
         read_only_fields = ('id',)
 
 
@@ -54,7 +69,7 @@ class ShopSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Shop
-        fields = ('id', 'name', 'state',)
+        fields = ('id', 'company_name', 'state',)
         read_only_fields = ('id',)
 
 
@@ -63,7 +78,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ('name', 'category',)
+        fields = ('product_name', 'category',)
+
+
 
 
 
@@ -83,13 +100,12 @@ class ProductInfoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductInfo
-        fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameters')
+        fields = ('id', 'product', 'shop', 'external_id', 'model', 'price', 'price_rrc', 'quantity', 'product_parameters')
         read_only_fields = ('id',)
 
 
 
 class OrderItemCreateSerializer(serializers.ModelSerializer):
-    
     class Meta:
         model = OrderItem
         fields = ('id', 'order', 'product_info', 'quantity')
@@ -98,17 +114,40 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
             'order': {'write_only': True}
         }
 
+    def create(self, validated_data):
+        # Создаем элемент заказа
+        return OrderItem.objects.create(**validated_data)
+    
+
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_info = ProductInfoSerializer(read_only=True)
 
+    class Meta:
+        model = OrderItem
+        fields = ('id', 'order', 'product_info', 'quantity', 'price')
+        read_only_fields = ('id',)
+
+    def create(self, validated_data):
+        # Убедитесь, что цена продукта указана
+        product_info = validated_data.get('product_info')
+        if product_info:
+            validated_data['price'] = product_info.price  # Устанавливаем цену продукта
+        return super().create(validated_data)
+    
 
 class OrderSerializer(serializers.ModelSerializer):
-    ordered_items = OrderItemCreateSerializer(read_only=True, many=True)
-    total_sum = serializers.IntegerField()
+    ordered_items = OrderItemSerializer(many=True)
     contact = ContactSerializer(read_only=True)
 
     class Meta:
         model = Order
-        fields = ('id', 'ordered_items', 'state', 'dt', 'total_sum', 'contact')
+        fields = ('id', 'ordered_items', 'status', 'contact')
         read_only_fields = ('id',)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Вычисляем общую сумму заказа
+        total_sum = sum(item.get_total_price() for item in instance.ordered_items.all())
+        representation['total_sum'] = total_sum
+        return representation

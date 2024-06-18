@@ -13,14 +13,49 @@ POST {{baseUrl}}/user/register
 Content-Type: application/json
 
 {
-    "email": "newuser2@example.com",
-    "password": "SecPassword2",
-    "first_name": "John2",
-    "last_name": "Doe2"
+    "email": "newuser3@example.com",
+    "password": "SecPassword3",
+    "first_name": "John3",
+    "last_name": "Doe3"
 }
 
 
-###  2. Подтверждение аккаунта через токен на почту
+
+
+###1.2 Авторизация пользователя
+
+POST {{baseUrl}}/user/login
+Content-Type: application/json
+
+{
+    "email": "newuser2@example.com",
+    "password": "SecPassword2"
+}
+
+
+###1.3 Запрос на сброс пароля
+
+POST {{baseUrl}}/user/password_reset
+Content-Type: application/json
+
+{
+    "email": "newuser1@example.com"
+}
+
+###1.4 Подтверждение сброса пароля
+
+POST {{baseUrl}}/user/password_reset/confirm
+Content-Type: application/json
+
+{
+    "token": "111",
+    "password": "SecPassword1",
+    "email": "newuser1@example.com"
+}
+
+
+
+### 1.5. Подтверждение аккаунта через токен на почту
 
 POST {{baseUrl}}/user/register/confirm
 Content-Type: application/json
@@ -31,20 +66,21 @@ Content-Type: application/json
 }
 
 
-###  3. Получение информации о пользователе
-GET  {{baseUrl}}/user/21/details
+###  2.1 Получение информации о пользователе
+GET  {{baseUrl}}/user/20/details
 Authorization: 111
 
 
 
-### 4. Получение списка всех пользователей:
+
+### 2.2 Получение списка всех пользователей:
 GET {{baseUrl}}/users
 
 
 
-### 5. Добавление Обновление Удаление контактной информации пользователя
+### 2.3  Добавление  контактной информации пользователя, если ее еще нет
 ###POST
-POST {{baseUrl}}/user/contact/21
+POST {{baseUrl}}/user/contact/20
 Content-Type: application/json
 Authorization: Bearer 111
 
@@ -60,49 +96,151 @@ Authorization: Bearer 111
 
 
 
-
-###GET
-GET {{baseUrl}}/user/contact/20
-Authorization: Bearer 111
-
-
-###PUT
-PUT {{baseUrl}}/user/contact/7
+######2.4 Дополнение информации о пользователе PUT
+PUT {{baseUrl}}/user/contact/20
 Content-Type: application/json
 Authorization: Bearer 111
 
 {
-"id": "7",
 "city": "New York",
-"street": "456",
-"house": "456",
-"structure": "456",
-"building": "456",
-"apartment": "456",
-"phone_number": "0987654321"
+"street": "22",
+"house": "22",
+"structure": "22",
+"building": "22",
+"apartment": "2",
+"phone_number": "09876542221"
 }
 
 
 
-###deleteFull
-DELETE {{baseUrl}}/user/contact/123?full_delete=True HTTP/1.1
+###2.5 Удалении контактной информации о пользователе Delete
+DELETE {{baseUrl}}/user/contact/21 HTTP/1.1
 Authorization: Bearer 111
 
 
 
-###ParticularDelete
+###2.6 Частичная замена контактной информации
 
-DELETE {{baseUrl}}/user/contact/123 HTTP/1.1
+PATCH {{baseUrl}}/user/contact/20 HTTP/1.1
 Authorization: Bearer 111
 Content-Type: application/json
 
 {
-"id": "7",
-"city": "New York",
+"city": "Mexico",
 "street": "456",
 "house": "456",
 "structure": "456",
 "building": "456",
-"apartment": "456",
-"phone_number": "0987654321"
+"apartment": "49999"
 }
+
+
+
+### 3.  Получение списка категорий
+
+GET {{baseUrl}}/categories
+
+
+### 4.  Получение информации о  магазинах
+
+GET {{baseUrl}}/shops
+
+
+### 5.Получение информации о продуктах
+
+GET {{baseUrl}}/products
+
+
+### 6. Управление корзиной
+
+
+### 6.1 Получение товаров в корзине пользователя
+GET {{baseUrl}}/basket/user/20
+Authorization: Bearer 111
+
+
+### 6.2 Добавление товара в корзину
+POST {{baseUrl}}/basket/user/20
+Authorization: Bearer 111
+Content-Type: application/json
+
+{
+    "items": [
+        {
+            "product_info": 2,
+            "quantity": 16
+        }
+    ]
+}
+
+### 6.3  Обновление количества товара в корзине
+PUT {{baseUrl}}/basket/user/20
+Content-Type: application/json
+
+{
+    "items": [{"id": 6, "quantity": 8}]
+}
+
+### 6.4 Удаление товара из корзины
+DELETE {{baseUrl}}/basket/user/20
+Content-Type: application/json
+
+{
+    "items": [6]
+}
+
+
+### 7.1 Обновление информации о партнере
+
+POST {{baseUrl}}/partner/update
+Content-Type: application/json
+
+{
+    "filePath": "F:\\NETOLOGYPython\\python-final-diplom\\data\\shop1.yaml"
+}
+
+### 7.2 Управление состоянием партнера
+
+POST {{baseUrl}}/partner/state
+Content-Type: application/json
+
+{
+    "shop_id" : "1",  
+    "state": "False"
+}
+
+
+
+### 7.3 Размещение заказа
+
+POST {{baseUrl}}/order
+Authorization: Bearer 111
+Content-Type: application/json
+
+{
+    "contact": {
+        "id": 30
+    },
+    "ordered_items": [
+        {
+            "product_info": {
+                "id": 1
+            },
+            "quantity": 2,
+            "price": 10.99
+        },
+        {
+            "product_info": {
+                "id": 2
+            },
+            "quantity": 1,
+            "price": 5.99
+        }
+    ]
+}
+
+### 7.4 Получение заказов партнера
+
+GET {{baseUrl}}/partner/orders/1
+Authorization: Bearer 111
+

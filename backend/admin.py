@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 
 
 from django import forms
+from .forms import OrderItemForm
 
 
 
@@ -44,7 +45,8 @@ class ShopAdmin(admin.ModelAdmin):
     """
     Панель управления магазинами
     """
-    list_display = ('company_name', 'state')
+    list_display = ('company_name', 'state', 'is_accepting_orders', 'prise_list_url')
+    list_editable = ('state',) 
 
 
 @admin.register(Category)
@@ -68,7 +70,14 @@ class ProductInfoAdmin(admin.ModelAdmin):
     """
     Панель управления информацией о продуктах
     """
-    list_display = ('product', 'model', 'shop', 'quantity', 'price', 'price_rrc')
+    list_display = ('product', 'model', 'shop', 'quantity', 'price', 'price_rrc', 'shop_state')
+
+    def shop_state(self, obj):
+        return obj.shop.state
+    shop_state.boolean = True
+    shop_state.short_description = 'Статус магазина'
+
+
 
 
 @admin.register(Parameter)
@@ -90,20 +99,19 @@ class ProductParameterAdmin(admin.ModelAdmin):
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
+    extra = 1
+    form = OrderItemForm
 
-
+    def get_product_name(self, obj):
+        return obj.product_info.product.product_name
+    get_product_name.short_description = "Product Name"
 
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    """
-    Панель управления заказами
-    """
     list_display = ('user', 'status', 'created_at', 'updated_at')
     list_filter = ('status', 'created_at')
     search_fields = ('user__email', 'status')
-    
-
     inlines = [OrderItemInline]
 
 
