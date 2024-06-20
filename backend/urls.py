@@ -28,8 +28,8 @@ urlpatterns = [
     path('products', ProductInfoView.as_view(), name='products'),
     path('basket', BasketView.as_view(), name='basket'),
     path('basket/user/<int:user_id>', BasketView.as_view(), name='basket-user'),
-    path('order', OrderView.as_view(), name='order'),
-    path('orders/<int:user_id>/', UserOrdersView.as_view(), name='user_orders'),
+    path('ordermakebyuser/<int:user_id>', OrderView.as_view(), name='order'),
+    path('orders/<int:user_id>/', OrderView.as_view(), name='user_orders'),
     path('users', UserListView.as_view(), name='user-list')
 
 ]

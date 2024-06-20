@@ -629,38 +629,48 @@ class OrderView(APIView):
     """
      # получить мои заказы
 
-    def get(self, request, *args, **kwargs):
-
+    def get(self, request, user_id=None):
         """
-               Retrieve the details of user orders.
+        Retrieve the details of user orders.
 
-               Args:
-               - request (Request): The Django request object.
+        Args:
+        - request (Request): The Django request object.
+        - user_id (int, optional): The ID of the user for whom the orders are being retrieved.
 
-               Returns:
-               - Response: The response containing the details of the order.
-               """
+        Returns:
+        - Response: The response containing the details of the order.
+        """
+        if user_id:
+            # Retrieve orders for a specific user
+            try:
+                orders = Order.objects.filter(user_id=user_id)
+                serializer = OrderSerializer(orders, many=True)
+                return Response(serializer.data)
+            except Order.DoesNotExist:
+                return Response({'error': 'No orders found for this user'}, status=404)
+        else:
+            # Retrieve orders for the authenticated user
+            if not request.user.is_authenticated:
+                return Response({'Status': False, 'Error': 'Log in required'}, status=403)
+            
+            orders = Order.objects.filter(user_id=request.user.id).exclude(state='basket').prefetch_related(
+                'ordered_items__product_info__product__category',
+                'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
+                total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+
+            serializer = OrderSerializer(orders, many=True)
+            return Response(serializer.data)
         
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
-        order = Order.objects.filter(
-            user_id=request.user.id).exclude(state='basket').prefetch_related(
-            'ordered_items__product_info__product__category',
-            'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
-            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
-
-        serializer = OrderSerializer(order, many=True)
-        return Response(serializer.data)
     
     # разместить заказ из корзины
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, user_id, *args, **kwargs):
         """
         Create a new order and send a notification.
 
         Args:
         - request (Request): The Django request object.
+        - user_id (int): The ID of the user for whom the order is being placed.
 
         Returns:
         - Response: The response indicating the status of the operation and any errors.
@@ -672,11 +682,8 @@ class OrderView(APIView):
             return Response({'Status': False, 'Error': 'Invalid token'}, status=403)
 
         # Проверяем наличие необходимых данных в запросе
-        if {'user_id', 'ordered_items'}.issubset(request.data):
+        if {'ordered_items'}.issubset(request.data):
             try:
-                # Извлекаем user_id из запроса
-                user_id = request.data.pop('user_id')
-
                 # Получаем пользователя и связанный с ним контакт
                 user = User.objects.get(id=user_id)
                 contact = user.contacts.first()  # Предполагаем, что у пользователя есть хотя бы один контакт
@@ -705,6 +712,7 @@ class OrderView(APIView):
 
 
 class UserOrdersView(APIView):
+
     def get(self, request, user_id):
         try:
             # Получаем все заказы пользователя

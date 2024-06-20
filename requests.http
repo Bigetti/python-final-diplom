@@ -213,12 +213,11 @@ Content-Type: application/json
 
 ### 7.3 Размещение заказа
 
-POST {{baseUrl}}/order
+POST {{baseUrl}}/ordermakebyuser/20
 Authorization: Bearer 111
 Content-Type: application/json
 
 {
-    "user_id": 20,
     "ordered_items": [
         {
             "product_info": {
