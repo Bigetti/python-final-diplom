@@ -67,7 +67,7 @@ Content-Type: application/json
 
 
 ###  2.1 Получение информации о пользователе
-GET  {{baseUrl}}/user/20/details
+GET  {{baseUrl}}/user/21/details
 Authorization: 111
 
 
@@ -80,18 +80,18 @@ GET {{baseUrl}}/users
 
 ### 2.3  Добавление  контактной информации пользователя, если ее еще нет
 ###POST
-POST {{baseUrl}}/user/contact/20
+POST {{baseUrl}}/user/contact/21
 Content-Type: application/json
 Authorization: Bearer 111
 
 {
-    "city": "New York",
-    "street": "123",
-    "house": "123",
-    "structure": "123",
-    "building": "123",
-    "apartment": "123",
-    "phone_number": "1234567890"
+    "city": "Boston",
+    "street": "222",
+    "house": "222",
+    "structure": "222",
+    "building": "222",
+    "apartment": "222",
+    "phone_number": "2222222"
 }
 
 
@@ -218,20 +218,18 @@ Authorization: Bearer 111
 Content-Type: application/json
 
 {
-    "contact": {
-        "id": 30
-    },
+    "user_id": 20,
     "ordered_items": [
         {
             "product_info": {
-                "id": 1
+                "id": 2
             },
             "quantity": 2,
             "price": 10.99
         },
         {
             "product_info": {
-                "id": 2
+                "id": 4
             },
             "quantity": 1,
             "price": 5.99
@@ -244,3 +242,9 @@ Content-Type: application/json
 GET {{baseUrl}}/partner/orders/1
 Authorization: Bearer 111
 
+
+
+
+### 7.5 Получение заказов по пользователю
+GET {{baseUrl}}/orders/20/
+Authorization: Bearer 11

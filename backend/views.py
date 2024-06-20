@@ -458,95 +458,6 @@ class BasketView(APIView):
 
 
 
-# class PartnerUpdate(APIView):
-    
-#     """
-#        A class for managing partner state.
-
-#        Methods:
-#        - get: Retrieve the state of the partner.
-
-#        Attributes:
-#        - None
-#        """
-#     # получить текущий статус
-#     def get(self, request, *args, **kwargs):
-#         """
-#                 Retrieve the state of the partner.
-
-#                 Args:
-#                 - request (Request): The Django request object.
-#                 Returns:
-#                 - Response: The response containing the state of the partner.
-
-#         """        
-#         if not request.user.is_authenticated:
-#             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
-#         if request.user.type != 'shop':
-#             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-
-
-#         shop = request.user.shop
-#         serializer = ShopSerializer(shop)
-#         return Response(serializer.data)
-    
-
-#     # Изменить текущий статус
-#     def post(self, request, *args, **kwargs):
-#         """
-#                 Update the partner price list information.
-
-#                 Args:
-#                 - request (Request): The Django request object.
-
-#                 Returns:
-#                 - JsonResponse: The response indicating the status of the operation and any errors.
-#                 """
-#         if not request.user.is_authenticated:
-#             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-#         if request.user.type != 'shop':
-#             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-
-#         url = request.data.get('url')
-#         if url:
-#             validate_url = URLValidator()
-#             try:
-#                 validate_url(url)
-#             except ValidationError as e:
-#                 return JsonResponse({'Status': False, 'Error': str(e)})
-#             else:
-#                 stream = get(url).content
-
-#                 data = load_yaml(stream, Loader=Loader)
-
-#                 shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
-#                 for category in data['categories']:
-#                     category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
-#                     category_object.shops.add(shop.id)
-#                     category_object.save()
-#                 ProductInfo.objects.filter(shop_id=shop.id).delete()
-#                 for item in data['goods']:
-#                     product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category'])
-
-#                     product_info = ProductInfo.objects.create(product_id=product.id,
-#                                                               external_id=item['id'],
-#                                                               model=item['model'],
-#                                                               price=item['price'],
-#                                                               price_rrc=item['price_rrc'],
-#                                                               quantity=item['quantity'],
-#                                                               shop_id=shop.id)
-#                     for name, value in item['parameters'].items():
-#                         parameter_object, _ = Parameter.objects.get_or_create(name=name)
-#                         ProductParameter.objects.create(product_info_id=product_info.id,
-#                                                         parameter_id=parameter_object.id,
-#                                                         value=value)
-
-#                 return JsonResponse({'Status': True})
-
-#         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-
 
 class PartnerState(APIView):
     def get(self, request, *args, **kwargs):
@@ -761,12 +672,17 @@ class OrderView(APIView):
             return Response({'Status': False, 'Error': 'Invalid token'}, status=403)
 
         # Проверяем наличие необходимых данных в запросе
-        if {'contact', 'ordered_items'}.issubset(request.data):
+        if {'user_id', 'ordered_items'}.issubset(request.data):
             try:
+                # Извлекаем user_id из запроса
+                user_id = request.data.pop('user_id')
+
+                # Получаем пользователя и связанный с ним контакт
+                user = User.objects.get(id=user_id)
+                contact = user.contacts.first()  # Предполагаем, что у пользователя есть хотя бы один контакт
+
                 # Создаем новый заказ
-                contact_data = request.data.pop('contact')
-                contact = Contact.objects.get(id=contact_data['id'])
-                order = Order.objects.create(contact=contact)
+                order = Order.objects.create(user=user, contact=contact)
 
                 # Создаем позиции заказа
                 for item_data in request.data['ordered_items']:
@@ -786,6 +702,17 @@ class OrderView(APIView):
 
         return Response({'Status': False, 'Error': 'Missing required data'}, status=400)
 
+
+
+class UserOrdersView(APIView):
+    def get(self, request, user_id):
+        try:
+            # Получаем все заказы пользователя
+            orders = Order.objects.filter(user_id=user_id)
+            serializer = OrderSerializer(orders, many=True)
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response({'error': 'No orders found for this user'}, status=404)
 
 
 

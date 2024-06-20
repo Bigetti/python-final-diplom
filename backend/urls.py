@@ -5,7 +5,7 @@ from django.views import View
 from django.http import HttpResponse
 
 from backend.views import RegisterAccount, LoginAccount, CategoryView, ShopView, ProductInfoView, BasketView, \
-    AccountDetails, ContactView, OrderView, PartnerState, PartnerOrders, ConfirmAccount, UserListView, CustomPasswordResetView,PriceListUploadView, CustomPasswordResetConfirmView
+    AccountDetails, UserOrdersView, ContactView, OrderView, PartnerState, PartnerOrders, ConfirmAccount, UserListView, CustomPasswordResetView,PriceListUploadView, CustomPasswordResetConfirmView
 
 
 
@@ -29,6 +29,7 @@ urlpatterns = [
     path('basket', BasketView.as_view(), name='basket'),
     path('basket/user/<int:user_id>', BasketView.as_view(), name='basket-user'),
     path('order', OrderView.as_view(), name='order'),
+    path('orders/<int:user_id>/', UserOrdersView.as_view(), name='user_orders'),
     path('users', UserListView.as_view(), name='user-list')
 
 ]
